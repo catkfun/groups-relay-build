@@ -21,11 +21,8 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          # 用阿里云 Ubuntu 镜像加速，规避 GitHub runner 访问 archive.ubuntu.com 缓慢
-          sudo sed -i 's|archive.ubuntu.com|mirrors.aliyun.com|g; s|security.ubuntu.com|mirrors.aliyun.com|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-          sudo sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-          sudo apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=30 update
-          sudo apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=30 install -y --no-install-recommends liblmdb-dev
+          sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 update
+          sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 install -y --no-install-recommends liblmdb-dev
 
       - name: Build
         run: |
