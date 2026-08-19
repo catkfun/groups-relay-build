@@ -176,7 +176,7 @@ func installNIP86Management() {
 		mgmt.blockIP(ip.String(), reason)
 		return nil
 	}
-	relay.ManagementAPI.UnblockIP = func(ctx context.Context, ip net.IP) error {
+	relay.ManagementAPI.UnblockIP = func(ctx context.Context, ip net.IP, reason string) error {
 		mgmt.unblockIP(ip.String())
 		return nil
 	}
