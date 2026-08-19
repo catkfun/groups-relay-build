@@ -121,7 +121,7 @@ func main() {
 
 	// NIP-45 (COUNT)：提供 LMDB 计数能力，否则客户端收到
 	// "unsupported: this relay does not support NIP-45"
-	relay.CountEvents = db.CountEvents
+	relay.CountEvents = append(relay.CountEvents, db.CountEvents)
 
 	// 放宽 relay29 的查询过滤策略（khatru29.Init 只装了一个 RejectFilter）。
 	// 原策略拒绝不带 #h/#e/#a/ids 的查询（"invalid query, must have 'h', 'e' or 'a' tag"），
