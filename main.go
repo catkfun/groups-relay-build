@@ -137,18 +137,20 @@ func main() {
 	})
 
 	// 放宽 relay29 的查询过滤策略（khatru29.Init 只装了一个 RejectFilter）。
-	// 原策略拒绝不带 #h/#e/#a/ids 的查询（"invalid query, must have 'h', 'e' or 'a' tag"），
-	// 而客户端（如 Amethyst 的提及/通知订阅）常用 "#p" 或 "authors" 限定查询。
-	// 这类查询在查询层（NormalEventQuery）只会得到空结果——不会全库扫描、
-	// 不会泄露私有群，因此放行以免客户端报 "blocked"；
-	// 其余查询仍走 relay29 原策略（保留 #h 私有群成员检查）。
+	// 原策略对不带 #h/#e/#a/ids 的非元数据查询一律拒绝
+	// （"invalid query, must have 'h', 'e' or 'a' tag"），而客户端会向所有中继
+	// 发全局 feed / 通知类订阅（如 Amethyst 的 {"kinds":[1,6,7,...]}，无任何 tag），
+	// 全部踩中。这类查询在查询层（NormalEventQuery）只会得到空结果——
+	// 不扫库、不泄露私有群，因此放行；其余拒绝（私有群 auth-required、
+	// 元数据 kinds 混用等）原样保留。
 	if n := len(relay.RejectFilter); n > 0 {
 		orig := relay.RejectFilter[n-1]
 		relaxed := func(ctx context.Context, f nostr.Filter) (bool, string) {
-			if len(f.Authors) > 0 || len(f.Tags["p"]) > 0 {
+			reject, msg := orig(ctx, f)
+			if reject && msg == "invalid query, must have 'h', 'e' or 'a' tag" {
 				return false, ""
 			}
-			return orig(ctx, f)
+			return reject, msg
 		}
 		relay.RejectFilter[n-1] = relaxed
 		relay.RejectCountFilter = append(relay.RejectCountFilter, relaxed)
