@@ -116,6 +116,8 @@ func main() {
 			return false, ""
 		},
 	}
+	// 填充各管理方法（ban/allow/kind/ip/name 等），避免返回 "not supported"
+	installNIP86Management()
 
 	relay.OverwriteDeletionOutcome = append(relay.OverwriteDeletionOutcome,
 		blockDeletesOfOldMessages,
