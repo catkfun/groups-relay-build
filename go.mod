@@ -1,4 +1,4 @@
-module github.com/max21dev/groups-relay
+module github.com/catkfun/groups-relay-build
 
 go 1.24.1
 
@@ -56,3 +56,6 @@ require (
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 )
+
+// 使用 patched fork 修复 khatru v0.17.5 NIP-86 supportedmethods 越界 panic
+replace github.com/fiatjaf/khatru => github.com/catkfun/khatru v0.17.5-patched

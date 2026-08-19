@@ -10,13 +10,6 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func preventGroupCreation(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
-	if event.Kind == 9007 && !relay29.IsInternalCall(ctx) {
-		return true, "to create groups open https://" + s.Domain + " in your web browser"
-	}
-	return false, ""
-}
-
 func blockDeletesOfOldMessages(ctx context.Context, target, deletion *nostr.Event) (acceptDeletion bool, msg string) {
 	if target.CreatedAt < nostr.Now()-60*60*2 /* 2 hours */ {
 		return false, "can't delete old event, contact relay admin"

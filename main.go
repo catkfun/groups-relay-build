@@ -15,6 +15,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip29"
+	"github.com/nbd-wtf/go-nostr/nip86"
 	"github.com/rs/zerolog"
 )
 
@@ -99,6 +100,23 @@ func main() {
 	relay.Info.Contact = s.RelayContact
 	relay.Info.Icon = s.RelayIcon
 
+	// 显式设置 ServiceURL：NIP-86 管理鉴权(校验 u tag)与 NIP-42 AUTH 都依赖它。
+	// Amethyst 客户端在 NIP-86 管理时，其 NIP-98 授权事件的 "u" tag 是
+	// "https://<domain>/"（即把 wss://groups.catk.fun/ 转成 https 并保留尾部斜杠）。
+	// 因此这里必须与之逐字符一致，否则报 "invalid 'u' tag"。
+	relay.ServiceURL = "https://" + s.Domain + "/"
+
+	// NIP-86 中继管理：仅允许运营者（= 中继 pubkey）调用，防止他人管理中继。
+	owner := s.RelayPubkey
+	relay.ManagementAPI.RejectAPICall = []func(ctx context.Context, mp nip86.MethodParams) (bool, string){
+		func(ctx context.Context, _ nip86.MethodParams) (bool, string) {
+			if khatru.GetAuthed(ctx) != owner {
+				return true, "not authorized"
+			}
+			return false, ""
+		},
+	}
+
 	relay.OverwriteDeletionOutcome = append(relay.OverwriteDeletionOutcome,
 		blockDeletesOfOldMessages,
 	)
@@ -116,12 +134,7 @@ func main() {
 		policies.PreventTimestampsInThePast(60*time.Second),
 		policies.PreventTimestampsInTheFuture(30*time.Second),
 		rateLimit,
-		preventGroupCreation, //enable client to create groups via kind 9007
 	)
-
-	// http routes
-	relay.Router().HandleFunc("/create", handleCreateGroup)
-	relay.Router().HandleFunc("/", handleHomepage)
 
 	log.Info().Str("relay-pubkey", s.RelayPubkey).Msg("running on http://0.0.0.0:" + s.Port)
 	if err := http.ListenAndServe(":"+s.Port, relay); err != nil {
