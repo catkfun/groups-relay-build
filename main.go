@@ -119,9 +119,22 @@ func main() {
 	// 填充各管理方法（ban/allow/kind/ip/name 等），避免返回 "not supported"
 	installNIP86Management()
 
-	// NIP-45 (COUNT)：提供 LMDB 计数能力，否则客户端收到
-	// "unsupported: this relay does not support NIP-45"
-	relay.CountEvents = append(relay.CountEvents, db.CountEvents)
+	// NIP-45 (COUNT)：否则客户端收到 "unsupported: this relay does not support NIP-45"。
+	// 注意：eventstore v0.16.4 的 lmdb.CountEvents 有死循环 bug（filter 无 authors/kinds
+	// 等附加条件时，迭代光标从不前移，count++ 无限循环导致 COUNT 永不返回），
+	// 因此这里改用 relay29 的 NormalEventQuery（自带私有群过滤）对结果计数，
+	// 既避开 bug，也不会泄露私有群消息数。
+	relay.CountEvents = append(relay.CountEvents, func(ctx context.Context, filter nostr.Filter) (int64, error) {
+		ch, err := state.NormalEventQuery(ctx, filter)
+		if err != nil {
+			return 0, err
+		}
+		var n int64
+		for range ch {
+			n++
+		}
+		return n, nil
+	})
 
 	// 放宽 relay29 的查询过滤策略（khatru29.Init 只装了一个 RejectFilter）。
 	// 原策略拒绝不带 #h/#e/#a/ids 的查询（"invalid query, must have 'h', 'e' or 'a' tag"），
