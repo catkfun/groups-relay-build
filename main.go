@@ -119,6 +119,28 @@ func main() {
 	// 填充各管理方法（ban/allow/kind/ip/name 等），避免返回 "not supported"
 	installNIP86Management()
 
+	// NIP-45 (COUNT)：提供 LMDB 计数能力，否则客户端收到
+	// "unsupported: this relay does not support NIP-45"
+	relay.CountEvents = db.CountEvents
+
+	// 放宽 relay29 的查询过滤策略（khatru29.Init 只装了一个 RejectFilter）。
+	// 原策略拒绝不带 #h/#e/#a/ids 的查询（"invalid query, must have 'h', 'e' or 'a' tag"），
+	// 而客户端（如 Amethyst 的提及/通知订阅）常用 "#p" 或 "authors" 限定查询。
+	// 这类查询在查询层（NormalEventQuery）只会得到空结果——不会全库扫描、
+	// 不会泄露私有群，因此放行以免客户端报 "blocked"；
+	// 其余查询仍走 relay29 原策略（保留 #h 私有群成员检查）。
+	if n := len(relay.RejectFilter); n > 0 {
+		orig := relay.RejectFilter[n-1]
+		relaxed := func(ctx context.Context, f nostr.Filter) (bool, string) {
+			if len(f.Authors) > 0 || len(f.Tags["p"]) > 0 {
+				return false, ""
+			}
+			return orig(ctx, f)
+		}
+		relay.RejectFilter[n-1] = relaxed
+		relay.RejectCountFilter = append(relay.RejectCountFilter, relaxed)
+	}
+
 	relay.OverwriteDeletionOutcome = append(relay.OverwriteDeletionOutcome,
 		blockDeletesOfOldMessages,
 	)
